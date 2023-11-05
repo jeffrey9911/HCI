@@ -1,0 +1,156 @@
+---
+title: "Assignment-8"
+output: html_document
+date: "2023-11-04"
+---
+
+Check packages
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(rstatix)
+```
+
+
+Load CSV
+```{r}
+data <- read.csv("SelfDev.csv")
+```
+
+
+An overall diverging stacked bar chart to visualize the distribution of Likert scale responses for each feature.
+```{r}
+# Gather the data to long format for plotting
+data_long <- data %>%
+  gather(key = "Feature", value = "Rating", -c(ID, Game))
+
+# Convert the ratings to a factor with levels ordered from 1 to 7
+data_long$Rating <- factor(data_long$Rating, levels = 1:7)
+
+# Calculate the proportions for each rating
+data_long <- data_long %>%
+  group_by(Feature) %>%
+  mutate(Proportion = (as.numeric(Rating) - 1) / 6)
+
+# Create the diverging stacked bar chart
+p <- ggplot(data_long, aes(x = Feature, y = Proportion, fill = Rating)) +
+  geom_bar(stat = "identity", position = "fill") +
+  coord_flip() +
+  scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+  theme_minimal() +
+  labs(y = "Proportion of Ratings", x = "System Feature", fill = "Rating") +
+  guides(fill = guide_legend(reverse = TRUE))
+
+p
+ggsave("Generated/Likert_Overall.svg", plot = p, width = 12, height = 6, dpi = 300)
+```
+
+A diverging stacked bar chart to visualize the distribution of Likert scale responses for each feature for First-person shooter game.
+```{r}
+data_fps <- data %>% filter(Game == "FPS")
+
+data_long <- data_fps %>%
+  gather(key = "Feature", value = "Rating", -c(ID, Game))
+
+data_long$Rating <- factor(data_long$Rating, levels = 1:7)
+
+data_long <- data_long %>%
+  group_by(Feature) %>%
+  mutate(Count = n(),
+         Proportion = (as.numeric(Rating) - 1) / 6,
+         Position = cumsum(Proportion) - 0.5 * Proportion)
+
+p <- ggplot(data_long, aes(x = Feature, y = Proportion, fill = Rating)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+  theme_minimal() +
+  labs(y = "Ratings", x = "System Features", fill = "Rating") +
+  guides(fill = guide_legend(reverse = TRUE))
+
+p
+ggsave("Generated/Likert_FPS.svg", plot = p, width = 12, height = 6, dpi = 300)
+```
+
+A diverging stacked bar chart to visualize the distribution of Likert scale responses for each feature for Action-Adventure game.
+```{r}
+data_aa <- data %>% filter(Game == "AA")
+
+data_long_aa <- data_aa %>%
+  gather(key = "Feature", value = "Rating", -c(ID, Game))
+
+data_long_aa$Rating <- factor(data_long_aa$Rating, levels = 1:7)
+
+data_long_aa <- data_long_aa %>%
+  group_by(Feature) %>%
+  mutate(Count = n(),
+         Proportion = (as.numeric(Rating) - 1) / 6,
+         Position = cumsum(Proportion) - 0.5 * Proportion)
+
+p <- ggplot(data_long_aa, aes(x = Feature, y = Proportion, fill = Rating)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+  theme_minimal() +
+  labs(y = "Ratings", x = "System Features", fill = "Rating") +
+  guides(fill = guide_legend(reverse = TRUE))
+
+p
+ggsave("Generated/Likert_AA.svg", plot = p, width = 12, height = 6, dpi = 300)
+```
+
+
+Wilcoxon signed-rank test for each feature by game, adjusts the p-values, calculates the effect sizes.
+```{r}
+data_long <- data %>%
+  pivot_longer(cols = -c(ID, Game), names_to = "Feature", values_to = "Score")
+
+results <- data.frame()
+
+for (feature in unique(data_long$Feature)) {
+  feature_data <- data_long %>% filter(Feature == feature)
+  
+  test_result <- feature_data %>%
+    wilcox_test(Score ~ Game, paired = TRUE, exact = FALSE) %>%
+    adjust_pvalue(method = "holm") %>%
+    add_significance() %>%
+    mutate(Feature = feature)
+  
+  effect_size <- feature_data %>%
+    wilcox_effsize(Score ~ Game, paired = TRUE) %>%
+    mutate(Feature = feature)
+  
+  combined_result <- cbind(test_result, EffectSize = effect_size$effsize)
+  
+  results <- rbind(results, combined_result)
+}
+
+results <- results %>% select(Feature, everything())
+
+results <- results %>%
+  rename(
+    P_Value = p,
+    P_Adjusted = p.adj,
+    Significance = p.adj.signif,
+    Statistic = statistic
+  )
+
+results
+write.csv(results, file = "Generated/Wilcoxon_Significance.csv", row.names = FALSE)
+```
+
+Visualization ^
+```{r}
+results$SignificanceLabel <- ifelse(results$P_Value < 0.05, "*", "ns")
+
+p <- ggplot(results, aes(x = interaction(group1, group2), y = Statistic, fill = Feature)) +
+  geom_boxplot() +
+  facet_wrap(~Feature, scales = "free") +
+  labs(x = "Game", y = "Rank") +
+  geom_text(aes(label = SignificanceLabel), position = position_dodge(width = 0.75), vjust = -0.5)
+
+p
+ggsave("Generated/Wilcoxon_Significance_Plot.svg", plot = p, width = 12, height = 6, dpi = 300)
+```

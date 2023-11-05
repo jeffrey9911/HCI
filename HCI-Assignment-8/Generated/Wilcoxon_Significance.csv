@@ -1,0 +1,9 @@
+"Feature",".y.","group1","group2","n1","n2","Statistic","P_Value","P_Adjusted","Significance","EffectSize"
+"Player.Tracker","Score","AA","FPS",20,20,60,0.309,0.309,"ns",0.21645224464739
+"Camera.Tracker","Score","AA","FPS",20,20,43,0.343,0.343,"ns",0.24996858535347
+"Audio.Tracker","Score","AA","FPS",20,20,20,0.0229,0.0229,"*",0.487708634565983
+"Game.Object.Tracker","Score","AA","FPS",20,20,43.5,0.749,0.749,"ns",0.0304434161815445
+"Heatmap","Score","AA","FPS",20,20,84.5,0.72,0.72,"ns",0.0547107811256426
+"Annotation.System","Score","AA","FPS",20,20,67.5,0.351,0.351,"ns",0.231035203462329
+"Game.Input.Tracker","Score","AA","FPS",20,20,45,0.292,0.292,"ns",0.225610717153942
+"Overall","Score","AA","FPS",20,20,47,0.0437,0.0437,"*",0.446780745582459
