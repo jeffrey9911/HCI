@@ -1,0 +1,93 @@
+---
+title: "Assignment-9"
+output: html_document
+date: "2023-11-09"
+---
+
+Mock data
+```{r}
+set.seed(314159)
+
+my_data <- data.frame(Player = gl(10, 1, 20),
+                      Device = rep(c("VR", "TV"), each = 10),
+                      Time = c(rnorm(10, 300, 10), rnorm(10, 290, 12))
+)
+my_data
+```
+
+
+
+# Assumption made. Perform assumptions checks
+```{r}
+if (!require(dplyr)) install.packages("dplyr")
+library("dplyr")
+group_by(my_data, Device) %>%
+  summarise(
+    count = n(),
+    mean = mean(Time, na.rm = TRUE),
+    sd = sd(Time, na.rm = TRUE)
+  )
+
+
+library("ggpubr")
+ggboxplot(my_data, x = "Device", y = "Time",
+          color = "Device", palette = c("#00AFBB", "#E7B800"),
+          order = c("VR", "TV"),
+          ylab = "Time", xlab = "Device",
+          title = "Standard Deviation BoxPlot"
+          )
+```
+Shapiro-Wilk normality test
+```{r}
+library("ggpubr")
+
+# running null assumption: VR playing time is greater than TV playing time. Players play more in VR than in TV.
+#         alternative assumption: Players play more in TV than VR.
+
+# compute the difference
+d <- with(my_data,
+          Time[Device == "VR"] - Time[Device == "TV"])
+
+# boxplot
+ggboxplot(d)
+
+# Shapiro-Wilk normality test for the differences
+shapiro.test(d)
+
+# => p-value > 0.05 so failed to reject, which means the null assumption stands.
+```
+
+# Dependent t-test
+Paired plot
+```{r}
+if (!require(PairedData)) install.packages("PairedData")
+library(PairedData)
+
+vr <- subset(my_data, Device == "VR", Time, drop = TRUE)
+tv <- subset(my_data, Device == "TV", Time, drop = TRUE)
+
+pd <- paired(vr, tv)
+plot(pd, type = "profile") + theme_bw()
+```
+Bar chart
+```{r}
+ggplot(my_data, aes(Device, Time)) + 
+  stat_summary(fun.y = mean, geom = "bar") + 
+  stat_summary(fun.data = mean_sd, geom = "errorbar", width = 0.2) + 
+  labs(x = "Device", y = "Time") 
+```
+t-test and effect size
+```{r}
+#t-test
+res <- t.test(vr, tv, paired = TRUE)
+res
+
+
+library(lsr) #for Cohen's D
+#effect size
+cd <- cohensD(my_data$Time~my_data$Device)
+cat("Cohen's D: ", cd)
+```
+
+
+
