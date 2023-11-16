@@ -1,0 +1,112 @@
+---
+title: "Assignment-10"
+output: html_document
+date: "2023-11-16"
+---
+
+Group members:
+Jeffrey Li 100712344
+
+
+
+```{r}
+set.seed(0)
+
+my_data <- data.frame(player = gl(10, 1, 30),                      
+
+Playthrough = rep(c("NG", "NG+", "NG++"), each = 10),                      
+
+time = c(rnorm(10,60,20), rnorm(10,40,20), rnorm(10,30,10)))
+```
+
+
+
+
+
+
+```{r}
+#barplot
+library("ggpubr")
+ggbarplot(
+  my_data, x = "Playthrough", y = "time",
+  order = c("NG", "NG+", "NG++"),
+  add = "mean_sd", label = TRUE, lab.nb.digits = 2, ggtheme =  theme_gray(), 
+  ylab = "Time to complete", xlab = "Playthrough"
+)
+```
+
+
+
+
+```{r}
+#normality tests
+library(rstatix)
+my_data %>%
+  group_by(Playthrough) %>%
+  shapiro_test(time)
+```
+
+
+
+
+```{r}
+library("ggpubr")
+ggboxplot(my_data, x = "Playthrough", y = "time",
+          color = "Playthrough",
+          order = c("NG", "NG+","NG++"),
+          ylab = "Time to Complete", xlab = "Playthrough")
+```
+
+
+
+
+
+```{r}
+if(!require(ez)) install.packages("ez")
+library(ez)
+ezANOVA(data = my_data, dv = time, wid = player, within = Playthrough, detailed = T)
+```
+
+
+
+
+
+
+```{r}
+#post-hoc
+pairwise.t.test(my_data$time, my_data$Playthrough, paired=T, p.adjust.method="bonferroni")
+```
+
+
+
+
+
+
+```{r}
+library(plyr)
+ddply(my_data, c( "Playthrough"), summarise,
+      N    = length(time),
+      mean = mean(time),
+      sd = sd(time))
+```
+
+
+
+
+
+
+```{r}
+stat.test <- my_data %>%
+  t_test(time ~ Playthrough, paired = TRUE, p.adjust.method = "bonferroni")
+stat.test
+
+ggplot(my_data, aes(Playthrough, time)) + 
+  stat_summary(fun = mean, geom = "point") + 
+  stat_summary(fun = mean, geom = "line", aes(group=1),colour = "black", linetype = "dashed") +
+  stat_summary(fun.data = mean_sd, geom = "errorbar", width = 0.2) + 
+  labs(x = "Playthrouth", y = "Time to complete") +
+  stat_pvalue_manual(
+    stat.test, label = "p.adj.signif", 
+    y.position = c(120, 130, 110)
+  )
+```
